@@ -1,0 +1,5 @@
+tweepy
+discord.py
+schedule
+python-dotenv
+flask
