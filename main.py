@@ -14,10 +14,10 @@ keep_alive()
 # Carregar variáveis do .env
 load_dotenv()
 
-API_KEY = os.getenv("API_KEY")
-API_SECRET = os.getenv("API_SECRET")
-ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
-ACCESS_TOKEN_SECRET = os.getenv("ACCESS_TOKEN_SECRET")
+API_KEY = os.getenv("TWITTER_API_KEY")
+API_SECRET = os.getenv("TWITTER_API_SECRET")
+ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
+ACCESS_TOKEN_SECRET = os.getenv("TWITTER_ACCESS_SECRET")
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
 # Canal para notificações de tweets enviados
