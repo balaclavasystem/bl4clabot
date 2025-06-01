@@ -1,0 +1,37 @@
+name: Run Discord & Twitter Bot
+
+on:
+  schedule:
+    # Roda todo minuto para manter agendador funcionando (ajuste se quiser)
+    - cron: '*/1 * * * *'
+  workflow_dispatch:  # Permite rodar manualmente
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'  # ou sua versão preferida
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run Bot
+      env:
+        TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+        TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
+        TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+        TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
+        DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+        DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
+        DISCORD_GM_CHANNEL_ID: ${{ secrets.DISCORD_GM_CHANNEL_ID }}
+      run: |
+        python main.py
