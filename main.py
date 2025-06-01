@@ -11,6 +11,9 @@ import asyncio
 from keep_alive import keep_alive
 keep_alive()
 
+# IMPORT DO TWEET COM IMAGEM (PFP)
+from pfp_module import enviar_tweet_pfp_do_dia
+
 # Carregar variáveis do .env
 load_dotenv()
 
@@ -94,9 +97,10 @@ async def enviar_gm_valoris_discord():
 def agendar_gm_discord():
     asyncio.run_coroutine_threadsafe(enviar_gm_valoris_discord(), bot.loop)
 
-# Agendar tarefas
-schedule.every().day.at("12:00").do(agendar_gm_discord)      # Mensagem fixa no Discord
-schedule.every().day.at("12:00").do(postar_tweet_diario)     # Tweet do arquivo
+# 🕒 Agendar tarefas
+schedule.every().day.at("12:00").do(agendar_gm_discord)       # Mensagem GM no Discord
+schedule.every().day.at("12:00").do(postar_tweet_diario)      # Tweet de texto
+schedule.every().day.at("16:00").do(enviar_tweet_pfp_do_dia)  # Tweet com imagem
 
 # Thread para rodar o agendador em background
 def agendador():
