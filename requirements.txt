@@ -1,6 +1,6 @@
-tweepy
-discord.py
-schedule
-python-dotenv
-flask
+tweepy>=4.0.0
+discord.py>=2.0.0
+schedule>=1.1.0
+python-dotenv>=1.0.0
+flask>=2.0.0
 openai>=1.0.0
