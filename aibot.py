@@ -1,98 +1,62 @@
-import os
 import discord
 from discord.ext import commands
+import os
 import openai
 from dotenv import load_dotenv
 
-# Carrega variáveis do .env
 load_dotenv()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 openai.api_key = OPENAI_API_KEY
 
-# IDs dos canais
-INPUT_CHANNEL_ID = 1378199753484926976
-OUTPUT_CHANNEL_ID = 1378564229061415023
+REVIEW_CHANNEL_ID = 1378199753484926976
+APPROVED_CHANNEL_ID = 1378564229061415023
 
-# Configurações do bot
 intents = discord.Intents.default()
-intents.messages = True
 intents.message_content = True
-bot = commands.Bot(command_prefix='/', intents=intents)
+bot = commands.Bot(command_prefix="/", intents=intents)
 
-# Prompt base do projeto
-BALACLAVA_PROMPT = """
-Você está assumindo o papel de consultor criativo, estrategista Web3 e narrador visual do universo chamado Balaclava System.
-[COLE TODO O SEU PROMPT AQUI, SEM CORTES]
-"""
+@bot.event
+async def on_ready():
+    print(f"🤖 AIBot conectado como {bot.user}")
 
-# Comando: /newmember descrição
-@bot.command(name='newmember')
-async def new_member(ctx, *, description):
-    if ctx.channel.id != INPUT_CHANNEL_ID:
-        return  # Ignora se não for no canal correto
-
-    full_prompt = f"""{BALACLAVA_PROMPT}
-
-Com base na seguinte descrição, gere um novo perfil de personagem:
-
-Descrição: {description}
-
-Formato:
-Name: [nome fictício coerente com o universo]
-Age: [idade entre 18 e 60]
-
-Bio:
-[Texto descritivo seguindo o estilo do Balaclava System, em inglês]
-"""
-
+# Comando para criar novo membro
+@bot.command()
+async def newmember(ctx, *, descricao):
+    await ctx.send("🧠 Generating member profile...")
     try:
-        await ctx.send("🔄 Gerando novo membro...")
-
-        response = openai.ChatCompletion.create(
+        response = openai.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "Você é um escritor criativo especialista em universos de ficção."},
-                {"role": "user", "content": full_prompt}
-            ],
-            temperature=0.8
+                {"role": "system", "content": "You are a creative writer creating character profiles for the fictional city of Valoris."},
+                {"role": "user", "content": f"Crie um perfil no formato abaixo, baseado na descrição: {descricao}\n\nFormato:\nName\nAge\nDistrict\nMember since\n\nBio:\n[Texto criativo e misterioso sobre o personagem, com o tom do universo Valoris]"}
+            ]
         )
 
-        profile = response['choices'][0]['message']['content']
-
-        await ctx.send(f"🆕 New Member Profile Generated:\n```{profile}```\n✅ Se estiver OK, digite `/approve`.")
-
-        bot.last_profile = {
-            'author': ctx.author.id,
-            'content': profile
-        }
+        content = response.choices[0].message.content.strip()
+        canal_revisao = bot.get_channel(REVIEW_CHANNEL_ID)
+        if canal_revisao:
+            await canal_revisao.send(f"🆕 Novo Membro Sugerido:\n\n{content}")
+            await ctx.send("✅ Perfil gerado e enviado para revisão.")
+        else:
+            await ctx.send("❌ Canal de revisão não encontrado.")
 
     except Exception as e:
         await ctx.send(f"❌ Erro ao gerar perfil: {e}")
 
-# Comando: /approve
-@bot.command(name='approve')
-async def approve(ctx):
-    if not hasattr(bot, 'last_profile'):
-        await ctx.send("❌ Nenhum perfil pendente de aprovação.")
-        return
-
-    if bot.last_profile['author'] != ctx.author.id:
-        await ctx.send("❌ Apenas quem criou o perfil pode aprovar.")
-        return
-
+# Comando para aprovar e enviar o perfil ao canal final
+@bot.command()
+async def approve(ctx, mensagem_id: int):
     try:
-        output_channel = bot.get_channel(OUTPUT_CHANNEL_ID)
-        if output_channel:
-            await output_channel.send(f"📢 NEW MEMBER:\n```{bot.last_profile['content']}```")
-            await ctx.send("✅ Perfil aprovado e publicado.")
-            del bot.last_profile
+        canal_revisao = bot.get_channel(REVIEW_CHANNEL_ID)
+        canal_final = bot.get_channel(APPROVED_CHANNEL_ID)
+
+        mensagem = await canal_revisao.fetch_message(mensagem_id)
+        if mensagem and canal_final:
+            await canal_final.send(mensagem.content)
+            await ctx.send("✅ Perfil aprovado e movido para o canal final.")
         else:
-            await ctx.send("❌ Canal de destino não encontrado.")
+            await ctx.send("❌ Não foi possível mover a mensagem.")
 
     except Exception as e:
-        await ctx.send(f"❌ Erro ao publicar o perfil: {e}")
-
-# Roda o bot
-bot.run(DISCORD_TOKEN)
+        await ctx.send(f"❌ Erro ao aprovar perfil: {e}")
