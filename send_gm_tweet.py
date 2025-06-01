@@ -1,32 +1,51 @@
 import os
 import tweepy
+import datetime
 from dotenv import load_dotenv
 
-load_dotenv()  # Carrega as variáveis do arquivo .env para dentro do ambiente
+load_dotenv()
 
-# Pega as credenciais do Twitter das variáveis de ambiente
 API_KEY = os.getenv("TWITTER_API_KEY")
 API_SECRET = os.getenv("TWITTER_API_SECRET")
 ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
 ACCESS_TOKEN_SECRET = os.getenv("TWITTER_ACCESS_SECRET")
 
-# Configura o cliente Tweepy com suas credenciais
-client = tweepy.Client(
-    consumer_key=API_KEY,
-    consumer_secret=API_SECRET,
-    access_token=ACCESS_TOKEN,
-    access_token_secret=ACCESS_TOKEN_SECRET
-)
+# Autenticação tweepy com OAuth1UserHandler para v1.1 (requerido para criar tweets)
+auth = tweepy.OAuth1UserHandler(API_KEY, API_SECRET, ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
+api = tweepy.API(auth)
 
-def enviar_gm_tweet():
-    texto = "GM"  # texto fixo do tweet que você quer enviar
+def carregar_tweets_do_arquivo(nome_arquivo="tweets.txt"):
+    tweets = []
     try:
-        # Cria o tweet com o texto "GM"
-        response = client.create_tweet(text=texto)
-        print(f"✅ Tweet enviado: https://twitter.com/user/status/{response.data['id']}")
+        with open(nome_arquivo, "r", encoding="utf-8") as f:
+            conteudo = f.read()
+            blocos = conteudo.split("\n\n")  # separa por linhas vazias
+            for bloco in blocos:
+                texto = bloco.strip()
+                if texto:
+                    tweets.append(texto)
+    except FileNotFoundError:
+        print(f"⚠️ Arquivo {nome_arquivo} não encontrado.")
+    return tweets
+
+def tweet_do_dia(tweets):
+    if not tweets:
+        return None
+    dia = datetime.datetime.utcnow().day
+    indice = (dia - 1) % len(tweets)
+    return tweets[indice]
+
+def enviar_tweet(texto):
+    if not texto:
+        print("⚠️ Nenhum texto para enviar.")
+        return
+    try:
+        api.update_status(texto)
+        print(f"✅ Tweet enviado:\n{texto}")
     except Exception as e:
         print(f"❌ Erro ao enviar tweet: {e}")
 
-# Quando você rodar o arquivo diretamente, vai executar essa função
 if __name__ == "__main__":
-    enviar_gm_tweet()
+    tweets = carregar_tweets_do_arquivo()
+    texto_do_dia = tweet_do_dia(tweets)
+    enviar_tweet(texto_do_dia)
