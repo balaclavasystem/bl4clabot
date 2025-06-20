@@ -133,6 +133,30 @@ Always write in English.
     except Exception as e:
         return f"Error generating profile: {e}"
 
+async def adaptar_frase_openai(frase):
+    """Pede para a OpenAI adaptar uma frase ao tom de voz do Balaclava System."""
+    prompt = f"""
+You are a creative assistant for the Balaclava System project, known for a poetic, urban, and mysterious tone.
+Rewrite the following phrase to fit this style. Keep the core meaning intact but transform the delivery.
+Respond ONLY with the adapted phrase itself.
+
+Original phrase: "{frase}"
+"""
+    try:
+        response = client_openai.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a creative writing assistant for the Balaclava System."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7
+        )
+        frase_adaptada = response.choices[0].message.content.strip()
+        return frase_adaptada
+    except Exception as e:
+        logging.error(f"Erro ao adaptar frase com OpenAI: {e}")
+        return None
+
 @bot.event
 async def on_ready():
     logging.info(f"🤖 Bot Discord conectado como {bot.user}")
@@ -177,8 +201,7 @@ async def approveprofile(ctx, *, perfil):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def talk(ctx, *, mensagem):
-    """Envia uma mensagem do canal de comando para o canal de anúncios."""
-
+    """Envia uma mensagem para o canal de anúncios, adaptando-a com IA se solicitado."""
     # Verifica se o comando foi usado no canal correto
     if ctx.channel.id != DISCORD_NEW_MEMBER_CHANNEL_ID:
         await ctx.message.delete()
@@ -188,13 +211,34 @@ async def talk(ctx, *, mensagem):
     # Deleta a mensagem de comando para manter o canal limpo
     await ctx.message.delete()
 
+    mensagem_final = mensagem
+    keyword = "adapte a frase:"
+
+    if mensagem.lower().startswith(keyword):
+        frase_original = mensagem[len(keyword):].strip()
+        if not frase_original:
+            await ctx.send("⚠️ Por favor, forneça uma frase para adaptar.", delete_after=10)
+            return
+
+        aviso_ia = await ctx.send("🧠 Adaptando a frase com a IA...", delete_after=15)
+        
+        frase_adaptada = await adaptar_frase_openai(frase_original)
+        
+        await aviso_ia.delete() # Deleta o aviso de "adaptando"
+
+        if frase_adaptada:
+            mensagem_final = frase_adaptada
+        else:
+            await ctx.send("❌ Não foi possível adaptar a frase. Verifique os logs.", delete_after=10)
+            return
+
     canal_anuncios = bot.get_channel(DISCORD_ANNOUNCEMENT_CHANNEL_ID)
     if canal_anuncios:
         try:
-            await canal_anuncios.send(mensagem)
+            await canal_anuncios.send(mensagem_final)
             # Envia uma confirmação temporária
             await ctx.send(f"✅ Mensagem enviada para {canal_anuncios.mention}.", delete_after=10)
-            logging.info(f"Mensagem enviada via /talk por {ctx.author.name}: '{mensagem}'")
+            logging.info(f"Mensagem enviada via /talk por {ctx.author.name}: '{mensagem_final}'")
         except Exception as e:
             await ctx.send(f"❌ Ocorreu um erro ao enviar a mensagem: {e}", delete_after=10)
             logging.error(f"Erro no comando /talk: {e}")
