@@ -8,9 +8,21 @@ import threading
 from dotenv import load_dotenv
 import asyncio
 from openai import OpenAI
+import logging
+from keep_alive import keep_alive
 
 # Carregar variáveis do .env
 load_dotenv()
+
+# Configurar logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler("bot.log"),
+        logging.StreamHandler()
+    ]
+)
 
 # Configurações Twitter
 API_KEY = os.getenv("TWITTER_API_KEY")
@@ -20,10 +32,11 @@ ACCESS_TOKEN_SECRET = os.getenv("TWITTER_ACCESS_SECRET")
 
 # Configurações Discord
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-DISCORD_CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))               # Canal para notificações gerais
-DISCORD_GM_CHANNEL_ID = int(os.getenv("DISCORD_GM_CHANNEL_ID"))         # Canal para mensagem fixa GM
+DISCORD_CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID") or 0)               # Canal para notificações gerais
+DISCORD_GM_CHANNEL_ID = int(os.getenv("DISCORD_GM_CHANNEL_ID") or 0)         # Canal para mensagem fixa GM
 DISCORD_NEW_MEMBER_CHANNEL_ID = 1378199753484926976                      # Canal onde o usuário envia NEW MEMBER para revisão
 DISCORD_APPROVED_MEMBER_CHANNEL_ID = 1378564229061415023                 # Canal onde será salvo perfil aprovado
+DISCORD_ANNOUNCEMENT_CHANNEL_ID = 1333169997228281978                    # Canal de anúncios para o comando /talk
 
 # Configurar autenticação Twitter (Client V2)
 client_twitter = tweepy.Client(
@@ -48,7 +61,7 @@ def carregar_tweets_do_arquivo():
                 if bloco:
                     tweets.append(bloco)
     except FileNotFoundError:
-        print("⚠️ Arquivo tweets.txt não encontrado.")
+        logging.warning("⚠️ Arquivo tweets.txt não encontrado.")
     return tweets
 
 tweets_prontos = carregar_tweets_do_arquivo()
@@ -56,11 +69,12 @@ tweets_prontos = carregar_tweets_do_arquivo()
 # Função para pegar o tweet do dia baseado no dia do mês
 def tweet_do_dia():
     if not tweets_prontos:
-        print("⚠️ Nenhum tweet encontrado no arquivo.")
+        logging.warning("⚠️ Nenhum tweet encontrado no arquivo.")
         return None
     import datetime
     dia = datetime.datetime.utcnow().day
     indice = (dia - 1) % len(tweets_prontos)
+    logging.info(f"Selecionando tweet do dia: índice {indice}")
     return tweets_prontos[indice]
 
 # Configurar bot Discord
@@ -73,8 +87,9 @@ async def enviar_mensagem_discord(mensagem):
     channel = bot.get_channel(DISCORD_CHANNEL_ID)
     if channel:
         await channel.send(mensagem)
+        logging.info(f"Mensagem enviada no Discord: {mensagem}")
     else:
-        print("❌ Canal Discord para notificações não encontrado")
+        logging.error("❌ Canal Discord para notificações não encontrado")
 
 # Função para postar tweet do dia e avisar no Discord
 def postar_tweet_diario():
@@ -83,25 +98,25 @@ def postar_tweet_diario():
         try:
             response = client_twitter.create_tweet(text=texto)
             tweet_url = f"https://twitter.com/user/status/{response.data['id']}"
-            print(f"✅ Tweet enviado: {tweet_url}")
+            logging.info(f"✅ Tweet enviado: {tweet_url}")
             asyncio.run_coroutine_threadsafe(
                 enviar_mensagem_discord(f"✅ Tweet automático enviado!\n🔗 {tweet_url}"),
                 bot.loop
             )
         except Exception as e:
-            print(f"❌ Erro ao enviar tweet: {e}")
+            logging.error(f"❌ Erro ao enviar tweet: {e}")
     else:
-        print("⚠️ Não há tweet para enviar hoje!")
+        logging.warning("⚠️ Não há tweet para enviar hoje!")
 
 # Enviar mensagem fixa "GM from Valoris" no Discord
 async def enviar_gm_valoris_discord():
-    mensagem = "GM from Valoris"
+    mensagem = tweet_do_dia() or "GM from Valoris"
     channel = bot.get_channel(DISCORD_GM_CHANNEL_ID)
     if channel:
         await channel.send(mensagem)
-        print("✅ Mensagem 'GM from Valoris' enviada no Discord")
+        logging.info(f"Mensagem GM enviada no Discord: {mensagem}")
     else:
-        print("❌ Canal Discord para GM não encontrado")
+        logging.error("❌ Canal Discord para GM não encontrado")
 
 def agendar_gm_discord():
     asyncio.run_coroutine_threadsafe(enviar_gm_valoris_discord(), bot.loop)
@@ -113,7 +128,7 @@ schedule.every().day.at("12:00").do(postar_tweet_diario)     # Tweet do arquivo 
 # Thread para rodar o agendador em background
 def agendador():
     while True:
-        print("Horário atual UTC:", time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
+        logging.info(f"Horário atual UTC: {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())}")
         schedule.run_pending()
         time.sleep(60)
 
@@ -153,7 +168,7 @@ Always write in English.
 
 @bot.event
 async def on_ready():
-    print(f"🤖 Bot Discord conectado como {bot.user}")
+    logging.info(f"🤖 Bot Discord conectado como {bot.user}")
 
 # Comando /tweet para enviar tweet na hora com texto customizado
 @bot.command()
@@ -201,4 +216,34 @@ async def approveprofile(ctx, *, perfil):
     await canal_aprovados.send(f"✅ **Approved Member Profile:**\n\n{perfil}")
     await ctx.send("✅ Profile approved and saved.")
 
+# Comando /talk para enviar mensagem em um canal específico
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def talk(ctx, *, mensagem):
+    """Envia uma mensagem do canal de comando para o canal de anúncios."""
+
+    # Verifica se o comando foi usado no canal correto
+    if ctx.channel.id != DISCORD_NEW_MEMBER_CHANNEL_ID:
+        await ctx.message.delete()
+        await ctx.send(f"Este comando só pode ser usado em <#{DISCORD_NEW_MEMBER_CHANNEL_ID}>.", delete_after=10)
+        return
+
+    # Deleta a mensagem de comando para manter o canal limpo
+    await ctx.message.delete()
+
+    canal_anuncios = bot.get_channel(DISCORD_ANNOUNCEMENT_CHANNEL_ID)
+    if canal_anuncios:
+        try:
+            await canal_anuncios.send(mensagem)
+            # Envia uma confirmação temporária
+            await ctx.send(f"✅ Mensagem enviada para {canal_anuncios.mention}.", delete_after=10)
+            logging.info(f"Mensagem enviada via /talk por {ctx.author.name}: '{mensagem}'")
+        except Exception as e:
+            await ctx.send(f"❌ Ocorreu um erro ao enviar a mensagem: {e}", delete_after=10)
+            logging.error(f"Erro no comando /talk: {e}")
+    else:
+        await ctx.send("❌ Canal de anúncios não encontrado. Verifique o ID.", delete_after=10)
+        logging.warning(f"Canal de anúncios ({DISCORD_ANNOUNCEMENT_CHANNEL_ID}) não encontrado ao usar /talk.")
+
+keep_alive()
 bot.run(DISCORD_TOKEN)
