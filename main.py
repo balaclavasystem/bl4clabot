@@ -9,6 +9,7 @@ import asyncio
 import logging
 import json
 from keep_alive import keep_alive
+import re
 
 # Carregar variáveis do .env
 load_dotenv()
@@ -201,6 +202,64 @@ async def rank(ctx):
         return
 
     embed.description = rank_text
+    await ctx.send(embed=embed)
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def rankingholders(ctx, *, data: str):
+    """Analisa um bloco de texto de atividade e cria um ranking de holders."""
+    
+    my_username = "@revolue"
+    await ctx.message.delete()
+
+    # Keywords para identificar o início de um novo evento na lista
+    event_starters = ['Sale', 'Transfer', 'List', 'Mint', 'Burn', 'Auction', 'Offer', 'Cancelled Offer', 'Accepted Offer']
+    
+    # Padrão de regex para dividir o texto em blocos de transação
+    pattern = r'\b(' + '|'.join(event_starters) + r')\b'
+    blocks = re.split(pattern, data)
+    
+    holders = []
+    
+    # O resultado do split é ['', 'Sale', 'conteúdo do bloco', 'Transfer', 'conteúdo do bloco', ...]
+    # Iteramos pelos blocos, pulando de 2 em 2
+    for i in range(1, len(blocks), 2):
+        event_type = blocks[i]
+        event_content = blocks[i+1]
+        
+        # Processa apenas os eventos de Sale e Transfer, como solicitado
+        if event_type in ['Sale', 'Transfer']:
+            # Encontra todos os @nomesdeusuario no bloco. Permite letras, números, _ e .
+            found_users = re.findall(r'@([\w\.]+)', event_content)
+            
+            for user in found_users:
+                username = '@' + user
+                # Adiciona o usuário na lista se não for o admin
+                if username.lower() != my_username.lower():
+                    holders.append(username)
+    
+    if not holders:
+        await ctx.send("Nenhum holder qualificado encontrado no texto. Verifique se o texto contém transações de 'Sale' ou 'Transfer' com outros usuários.", delete_after=15)
+        return
+        
+    from collections import Counter
+    counts = Counter(holders)
+    
+    # Ordena os holders pela quantidade de NFTs, do maior para o menor
+    sorted_holders = counts.most_common()
+    
+    embed = discord.Embed(title="🏆 Ranking de Holders por Atividade", color=0x1a1a1a)
+    
+    description = ""
+    for i, (username, count) in enumerate(sorted_holders):
+        description += f"**{i+1}.** {username} - **{count} NFTs**\n"
+        # Limite de segurança para não ultrapassar o máximo de caracteres do Discord
+        if len(description) > 3800:
+            description += "\n*Ranking truncado para caber na mensagem.*"
+            break
+            
+    embed.description = description
+    
     await ctx.send(embed=embed)
 
 keep_alive()
