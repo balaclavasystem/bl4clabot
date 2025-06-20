@@ -334,5 +334,14 @@ async def talk(ctx, *, mensagem):
         await ctx.send("❌ Canal de anúncios não encontrado. Verifique o ID.", delete_after=10)
         logging.warning(f"Canal de anúncios ({DISCORD_ANNOUNCEMENT_CHANNEL_ID}) não encontrado ao usar /talk.")
 
+# Comando de teste para a funcionalidade Membro do Dia
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def testemembro(ctx):
+    """Aciona manualmente a postagem do Membro do Dia para teste."""
+    await ctx.message.delete()
+    aviso = await ctx.send("⚙️ Buscando um membro aleatório para teste...", delete_after=5)
+    await postar_membro_do_dia()
+
 keep_alive()
 bot.run(DISCORD_TOKEN)
