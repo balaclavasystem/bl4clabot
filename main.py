@@ -32,7 +32,7 @@ DISCORD_ANNOUNCEMENT_CHANNEL_ID = 1333169997228281978    # Canal de destino para
 # --- Sistema de Moeda (VALs) ---
 SALDOS_FILE = "saldos.json"
 NOME_MOEDA = "VALs"
-GANHO_POR_MSG = 5
+GANHO_POR_MSG = 1
 COOLDOWN_MSG = 60  # em segundos
 
 user_cooldowns = {}
