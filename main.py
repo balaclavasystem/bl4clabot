@@ -38,13 +38,11 @@ DISCORD_NEW_MEMBER_CHANNEL_ID = 1378199753484926976                      # Canal
 DISCORD_APPROVED_MEMBER_CHANNEL_ID = 1378564229061415023                 # Canal onde será salvo perfil aprovado
 DISCORD_ANNOUNCEMENT_CHANNEL_ID = 1333169997228281978                    # Canal de anúncios para o comando /talk
 
-# Configurar autenticação Twitter (Client V2)
-client_twitter = tweepy.Client(
-    consumer_key=API_KEY,
-    consumer_secret=API_SECRET,
-    access_token=ACCESS_TOKEN,
-    access_token_secret=ACCESS_TOKEN_SECRET
+# Configurar autenticação Twitter (API v1.1)
+auth = tweepy.OAuth1UserHandler(
+   API_KEY, API_SECRET, ACCESS_TOKEN, ACCESS_TOKEN_SECRET
 )
+api_twitter_v1 = tweepy.API(auth)
 
 # Configurar cliente OpenAI (API >= 1.0.0)
 client_openai = OpenAI()
@@ -96,8 +94,8 @@ def postar_tweet_diario():
     texto = tweet_do_dia()
     if texto:
         try:
-            response = client_twitter.create_tweet(text=texto)
-            tweet_url = f"https://twitter.com/user/status/{response.data['id']}"
+            response = api_twitter_v1.update_status(status=texto)
+            tweet_url = f"https://twitter.com/user/status/{response.id_str}"
             logging.info(f"✅ Tweet enviado: {tweet_url}")
             asyncio.run_coroutine_threadsafe(
                 enviar_mensagem_discord(f"✅ Tweet automático enviado!\n🔗 {tweet_url}"),
@@ -174,8 +172,8 @@ async def on_ready():
 @bot.command()
 async def tweet(ctx, *, mensagem):
     try:
-        response = client_twitter.create_tweet(text=mensagem)
-        tweet_url = f"https://twitter.com/user/status/{response.data['id']}"
+        response = api_twitter_v1.update_status(status=mensagem)
+        tweet_url = f"https://twitter.com/user/status/{response.id_str}"
         await ctx.send(f"✅ Tweet enviado!\n🔗 {tweet_url}")
     except Exception as e:
         await ctx.send(f"❌ Erro ao enviar tweet: {e}")
