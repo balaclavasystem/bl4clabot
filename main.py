@@ -100,7 +100,15 @@ def get_random_holder_from_tzkt():
     try:
         # Pega o número total de tokens
         url_count = f"https://api.tzkt.io/v1/contracts/{CONTRATO_ID}/tokens/count"
-        total_tokens = int(requests.get(url_count).text)
+        response_count = requests.get(url_count)
+        response_count.raise_for_status()
+
+        count_text = response_count.text.strip()
+        if not count_text:
+            logging.warning("A API de contagem do TZKT retornou uma resposta vazia.")
+            return None
+            
+        total_tokens = int(count_text)
 
         if total_tokens == 0:
             logging.warning("Nenhum token encontrado no contrato.")
