@@ -9,6 +9,8 @@ import asyncio
 from openai import OpenAI
 import logging
 from keep_alive import keep_alive
+import requests
+import random
 
 # Carregar variáveis do .env
 load_dotenv()
@@ -30,6 +32,8 @@ DISCORD_GM_CHANNEL_ID = int(os.getenv("DISCORD_GM_CHANNEL_ID") or 0)         # C
 DISCORD_NEW_MEMBER_CHANNEL_ID = 1378199753484926976                      # Canal onde o usuário envia NEW MEMBER para revisão
 DISCORD_APPROVED_MEMBER_CHANNEL_ID = 1378564229061415023                 # Canal onde será salvo perfil aprovado
 DISCORD_ANNOUNCEMENT_CHANNEL_ID = 1333169997228281978                    # Canal de anúncios para o comando /talk
+CANAL_MEMBRO_DO_DIA_ID = 1364929842382114957                             # Canal para postar o "Membro do Dia"
+CONTRATO_ID = "KT1X3TTB9Ematb7K9qbaCcC6wFSar1tXcAo9"                     # Contrato Tezos
 
 # Configurar cliente OpenAI (API >= 1.0.0)
 client_openai = OpenAI()
@@ -89,8 +93,92 @@ async def enviar_gm_valoris_discord():
 def agendar_gm_discord():
     asyncio.run_coroutine_threadsafe(enviar_gm_valoris_discord(), bot.loop)
 
+# --- Funcionalidade Membro do Dia ---
+
+def get_random_holder_from_tzkt():
+    """Busca um detentor de token aleatório usando a API do TZKT."""
+    try:
+        # Pega o número total de tokens
+        url_count = f"https://api.tzkt.io/v1/contracts/{CONTRATO_ID}/tokens/count"
+        total_tokens = int(requests.get(url_count).text)
+
+        if total_tokens == 0:
+            logging.warning("Nenhum token encontrado no contrato.")
+            return None
+
+        # Para otimizar, pegamos apenas um token aleatório em vez de toda a lista
+        random_offset = random.randint(0, total_tokens - 1)
+        url_token = f"https://api.tzkt.io/v1/contracts/{CONTRATO_ID}/tokens?limit=1&offset={random_offset}"
+        
+        response = requests.get(url_token)
+        response.raise_for_status() # Lança um erro para respostas ruins (4xx ou 5xx)
+        
+        tokens = response.json()
+        if not tokens:
+            logging.warning("A busca aleatória de token não retornou resultados.")
+            return None
+
+        return tokens[0]['metadata']
+
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Erro de rede ao buscar dados no TZKT: {e}")
+        return None
+    except (ValueError, KeyError, IndexError) as e:
+        logging.error(f"Erro ao processar dados do TZKT: {e}")
+        return None
+
+async def postar_membro_do_dia():
+    """Posta o membro do dia no canal do Discord."""
+    logging.info("Iniciando busca pelo membro do dia...")
+    metadata = get_random_holder_from_tzkt()
+
+    if metadata:
+        try:
+            # Extrai os dados
+            nome = metadata.get("name", "Nome não encontrado")
+            bio = metadata.get("description", "Descrição não encontrada.")
+            
+            # Converte o link IPFS da imagem para um gateway HTTP público
+            image_uri = metadata.get("image", "")
+            if image_uri.startswith("ipfs://"):
+                image_url = image_uri.replace("ipfs://", "https://ipfs.io/ipfs/")
+            else:
+                image_url = image_uri
+
+            # Extrai os atributos
+            idade = "N/A"
+            distrito = "N/A"
+            for attr in metadata.get("attributes", []):
+                if attr.get("name") == "AGE":
+                    idade = attr.get("value", "N/A")
+                if attr.get("name") == "DISTRICT":
+                    distrito = attr.get("value", "N/A")
+
+            # Cria a mensagem bonita (Embed)
+            embed = discord.Embed(title=nome, description=bio, color=0x1a1a1a)
+            if image_url:
+                embed.set_image(url=image_url)
+            embed.add_field(name="Idade", value=idade, inline=True)
+            embed.add_field(name="Distrito", value=distrito, inline=True)
+            embed.set_footer(text="Membro do Dia | Balaclava System")
+
+            channel = bot.get_channel(CANAL_MEMBRO_DO_DIA_ID)
+            if channel:
+                await channel.send(embed=embed)
+                logging.info(f"Membro do dia postado com sucesso: {nome}")
+            else:
+                logging.error(f"Canal do Membro do Dia (ID: {CANAL_MEMBRO_DO_DIA_ID}) não encontrado.")
+        except Exception as e:
+            logging.error(f"Erro ao criar ou enviar o embed do Membro do Dia: {e}")
+    else:
+        logging.warning("Não foi possível obter metadados para o membro do dia.")
+
+def agendar_membro_do_dia():
+    asyncio.run_coroutine_threadsafe(postar_membro_do_dia(), bot.loop)
+
 # Agendar tarefas
 schedule.every().day.at("09:00").do(agendar_gm_discord)      # Mensagem fixa no Discord às 09:00 UTC
+schedule.every().day.at("13:00").do(agendar_membro_do_dia) # Posta o membro do dia às 13:00 UTC
 
 # Thread para rodar o agendador em background
 def agendador():
