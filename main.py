@@ -237,8 +237,8 @@ async def saldo(ctx, membro: discord.Member = None):
     saldo_membro = obter_saldo(str(membro.id))
     await ctx.send(f"**{membro.display_name}** possui **{saldo_membro} {NOME_MOEDA}**.")
 
-@bot.command(name="rank", aliases=["leaderboard"])
-async def rank(ctx):
+@bot.command(name="posicao", aliases=["rank", "leaderboard"])
+async def posicao(ctx):
     """Mostra o ranking dos membros com mais VALs."""
     sorted_saldos = obter_ranking()
     
