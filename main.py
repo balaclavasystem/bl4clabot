@@ -10,6 +10,8 @@ import logging
 import json
 from keep_alive import keep_alive
 import re
+import requests
+from pymongo import MongoClient
 
 # Carregar variáveis do .env
 load_dotenv()
@@ -30,29 +32,73 @@ DISCORD_GM_CHANNEL_ID = int(os.getenv("DISCORD_GM_CHANNEL_ID") or 0)
 DISCORD_NEW_MEMBER_CHANNEL_ID = 1378199753484926976      # Canal onde o comando /talk é usado
 DISCORD_ANNOUNCEMENT_CHANNEL_ID = 1333169997228281978    # Canal de destino para o comando /talk
 
-# --- Sistema de Moeda (VALs) ---
-SALDOS_FILE = "saldos.json"
+# --- Sistema de Moeda (VALs) com MongoDB ---
 NOME_MOEDA = "VALs"
 GANHO_POR_MSG = 1
 COOLDOWN_MSG = 60  # em segundos
 
+# Configuração MongoDB
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
+client = MongoClient(MONGODB_URI)
+db = client.bl4clabot
+saldos_collection = db.saldos
+
 user_cooldowns = {}
 
 def carregar_saldos():
-    """Carrega os saldos do arquivo JSON."""
-    if not os.path.exists(SALDOS_FILE):
-        return {}
+    """Carrega os saldos do MongoDB."""
     try:
-        with open(SALDOS_FILE, 'r') as f:
-            return json.load(f)
-    except (json.JSONDecodeError, FileNotFoundError):
+        saldos = {}
+        for doc in saldos_collection.find():
+            saldos[doc['user_id']] = doc['saldo']
+        return saldos
+    except Exception as e:
+        logging.error(f"Erro ao carregar saldos do MongoDB: {e}")
         return {}
 
 def salvar_saldos(saldos):
-    """Salva os saldos no arquivo JSON."""
-    with open(SALDOS_FILE, 'w') as f:
-        json.dump(saldos, f, indent=4)
+    """Salva os saldos no MongoDB."""
+    try:
+        for user_id, saldo in saldos.items():
+            saldos_collection.update_one(
+                {'user_id': user_id},
+                {'$set': {'saldo': saldo}},
+                upsert=True
+            )
+        logging.info(f"Salvos {len(saldos)} saldos no MongoDB")
+    except Exception as e:
+        logging.error(f"Erro ao salvar saldos no MongoDB: {e}")
 
+def adicionar_val(user_id, quantidade=1):
+    """Adiciona VALs para um usuário específico."""
+    try:
+        saldos_collection.update_one(
+            {'user_id': user_id},
+            {'$inc': {'saldo': quantidade}},
+            upsert=True
+        )
+        logging.info(f"Adicionado {quantidade} VAL para usuário {user_id}")
+    except Exception as e:
+        logging.error(f"Erro ao adicionar VALs: {e}")
+
+def obter_saldo(user_id):
+    """Obtém o saldo de um usuário específico."""
+    try:
+        doc = saldos_collection.find_one({'user_id': user_id})
+        return doc['saldo'] if doc else 0
+    except Exception as e:
+        logging.error(f"Erro ao obter saldo: {e}")
+        return 0
+
+def obter_ranking():
+    """Obtém o ranking de todos os usuários."""
+    try:
+        return list(saldos_collection.find().sort('saldo', -1))
+    except Exception as e:
+        logging.error(f"Erro ao obter ranking: {e}")
+        return []
+
+# Carregar saldos iniciais (para compatibilidade)
 saldos = carregar_saldos()
 
 # Função para carregar GMs do arquivo tweets.txt
@@ -111,7 +157,24 @@ def agendador():
         schedule.run_pending()
         time.sleep(60)
 
+# Thread para manter o bot acordado
+def ping_keep_alive():
+    while True:
+        try:
+            # Faz uma requisição para o próprio servidor para mantê-lo acordado
+            response = requests.get("http://localhost:8080/health", timeout=5)
+            if response.status_code == 200:
+                logging.info("✅ Ping de keep-alive realizado com sucesso")
+            else:
+                logging.warning(f"⚠️ Ping de keep-alive retornou status {response.status_code}")
+        except Exception as e:
+            logging.error(f"❌ Erro no ping de keep-alive: {e}")
+        
+        # Pings a cada 10 minutos (600 segundos)
+        time.sleep(600)
+
 threading.Thread(target=agendador, daemon=True).start()
+threading.Thread(target=ping_keep_alive, daemon=True).start()
 
 @bot.event
 async def on_ready():
@@ -133,8 +196,7 @@ async def on_message(message):
     user_cooldowns[author_id] = current_time
 
     # Adicionar VALs
-    saldos[author_id] = saldos.get(author_id, 0) + GANHO_POR_MSG
-    salvar_saldos(saldos)
+    adicionar_val(author_id, GANHO_POR_MSG)
     
     # É crucial para que os outros comandos continuem funcionando
     await bot.process_commands(message)
@@ -172,23 +234,24 @@ async def saldo(ctx, membro: discord.Member = None):
     if membro is None:
         membro = ctx.author
 
-    saldo_membro = saldos.get(str(membro.id), 0)
+    saldo_membro = obter_saldo(str(membro.id))
     await ctx.send(f"**{membro.display_name}** possui **{saldo_membro} {NOME_MOEDA}**.")
 
 @bot.command(name="rank", aliases=["leaderboard"])
 async def rank(ctx):
     """Mostra o ranking dos membros com mais VALs."""
-    if not saldos:
+    sorted_saldos = obter_ranking()
+    
+    if not sorted_saldos:
         await ctx.send("Ninguém possui VALs ainda. Comece a conversar!")
         return
-
-    # Ordena os saldos do maior para o menor
-    sorted_saldos = sorted(saldos.items(), key=lambda item: item[1], reverse=True)
 
     embed = discord.Embed(title=f"🏆 Ranking de {NOME_MOEDA}", color=0x1a1a1a)
     
     rank_text = ""
-    for i, (user_id, saldo_val) in enumerate(sorted_saldos[:10]): # Pega os top 10
+    for i, doc in enumerate(sorted_saldos[:10]): # Pega os top 10
+        user_id = doc['user_id']
+        saldo_val = doc['saldo']
         try:
             membro = await ctx.guild.fetch_member(int(user_id))
             nome_membro = membro.display_name
