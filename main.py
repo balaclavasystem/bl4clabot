@@ -325,5 +325,15 @@ async def rankingholders(ctx, *, data: str):
     
     await ctx.send(embed=embed)
 
+@bot.command(name="darvals")
+@commands.has_permissions(administrator=True)
+async def darvals(ctx, membro: discord.Member, quantidade: int):
+    """Adiciona uma quantidade de VALs para um usuário. Uso: /darvals @usuario 100"""
+    if quantidade <= 0:
+        await ctx.send("A quantidade deve ser maior que zero.", delete_after=10)
+        return
+    adicionar_val(str(membro.id), quantidade)
+    await ctx.send(f"✅ {quantidade} {NOME_MOEDA} adicionados para {membro.display_name}.", delete_after=10)
+
 keep_alive()
 bot.run(DISCORD_TOKEN)
