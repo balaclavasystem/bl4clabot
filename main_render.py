@@ -61,7 +61,7 @@ intents.message_content = True
 intents.guilds = True
 intents.messages = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix="bl4", intents=intents)
 
 # Flask app para keep-alive no Render
 app = Flask(__name__)
