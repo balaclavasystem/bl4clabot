@@ -1,0 +1,7 @@
+# Discord Bot Configuration - Versão Limpa
+DISCORD_TOKEN=your_discord_bot_token_here
+DISCORD_GM_CHANNEL_ID=your_gm_channel_id_here
+
+# IDs dos canais (já configurados no código)
+# DISCORD_NEW_MEMBER_CHANNEL_ID=1378199753484926976
+# DISCORD_ANNOUNCEMENT_CHANNEL_ID=1333169997228281978 

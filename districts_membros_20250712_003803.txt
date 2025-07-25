@@ -1,0 +1,51 @@
+============================================================
+🏛️  DISTRICTS - BALACLAVA SYSTEM
+============================================================
+📅 Gerado em: 12/07/2025 00:37:42
+🌍 Total de Districts: 1
+
+👥 Total de membros únicos: 24
+
+==================================================
+🏛️  DISTRICT #1: SEM DISTRICT
+==================================================
+📊 Estatísticas:
+   • NFTs no District: 85
+   • Membros únicos: 24
+   • Percentual do total: 100.0%
+
+👥 MEMBROS:
+------------------------------
+ 1. tz1UPorMvycMu4U1hDXFn2tCqDqu4KdLkGKv
+ 2. tz1WdfwRrbQk27qq5fFUEezwyTDs3ZDZX23D
+ 3. Ernesto Asch (tz1LUv777uAZgT1QpvmEkpxxfKsh9h6ZgRTX)
+ 4. tz1NdP31uwX9swpi4YzfU6tqLVugnDrcGgfy
+ 5. tz1cjXNpn2G2kTnsSSGy9gRnF6kgyEyjLAsH
+ 6. tz1geKWj8S8gVaGmCmMh4B4UwYp2n8DHkD2S
+ 7. Mahesh Balasubramanian (tz1hYQYZrfcnbEQK3LqGxDwcYDc8pyFmuVco)
+ 8. tz1XsFF4fKxn84QSwbWhesk6WeTWsq2cTPYF
+ 9. wm.v (tz1PBJpDgtxT95aRr4fGanaipLSzKayHm9Cy)
+10. tz1gWgX53HNPYkqXGKxJ9hxPCreufA3VEJoN
+11. tz2BRY3hwLLKPYhJk9uMvMMJVCh78JHQLtua
+12. tz2M9sX1NesKCZVT8xyBFs7DpX4cxEeyyXdJ
+13. tz1aHnquArW2bUjUa3FrutqL77Uu8YXyStwK
+14. tz1dctvaP42ZZ9iRJFTKU2TNgE4e3HuK8uCM
+15. tz1VTAY2QHJhnmVken1piuFD2ZVgupxUf88A
+16. tz1grR1FG7oUFNNgkxj8VdbvawNpv9gVJLVu
+17. tz2XcieaUipMHjHZjPSrQQXAQdSNuuFqp4xj
+18. tz1gfvbrqxbAYngZtSY2dhbvTCcfAm4st1SW
+19. tz1Tt1jmXYc7gGmpeBezqAdeojxJyphCYAL7
+20. tz1WeJigLkEBtbUMd2VSBcxv6JemycPNfyEc
+21. tz1XjHr1mALiXKLLNokazf4hTJ1tmcaKnonp
+22. tz1SJ8kx8CkvuwcFQimBmXvVKb9ySDQwP51Y
+23. tz1cE4gHVCC6QP4eLzaekV2Uu62w1wEzSjoe
+24. tz1goSVhqyDWgaEZ5AXT2RCNvCabLr3iuay5
+
+============================================================
+📋 RESUMO GERAL
+============================================================
+ 1. 🏛️💎 Sem District: 24 membros (100.0%)
+
+============================================================
+✅ Arquivo gerado com sucesso!
+============================================================

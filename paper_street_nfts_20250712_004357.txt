@@ -1,0 +1,36 @@
+DISTRICT PAPER STREET - BALACLAVA SYSTEM
+==================================================
+Gerado em: 12/07/2025 00:43:57
+Total de NFTs analisados: 85
+NFTs encontrados: 10
+
+ 1. Eli “Ash” Mercer (ID: 1)
+    District: {'name': 'District', 'value': 'Paper Street'}
+
+ 2. Vincent "Torch" Legrand (ID: 2)
+    District: {'name': 'District', 'value': 'Paper Street'}
+
+ 3. Vicious V (ID: 8)
+    District: {'name': 'District', 'value': 'Paper Street'}
+
+ 4. Raymond K. Hessel (ID: 13)
+    District: {'name': 'District', 'value': 'Paper Street'}
+
+ 5. Zoey Wild (ID: 15)
+    District: {'name': 'District', 'value': 'Paper Street'}
+
+ 6. Taiu Q. Sab (ID: 23)
+    District: {'name': 'District', 'value': 'Paper Street'}
+
+ 7. William "Break" Jones (ID: 46)
+    District: {'name': 'District', 'value': 'Paper Street'}
+
+ 8. Jack "Clubs" Morano (ID: 56)
+    District: {'name': 'District', 'value': 'Paper Street'}
+
+ 9. Marla F Jackson (ID: 66)
+    District: {'name': 'District', 'value': 'Paper Street'}
+
+10. The Creator (ID: 72)
+    District: {'name': 'District', 'value': 'Paper Street'}
+

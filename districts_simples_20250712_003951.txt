@@ -1,0 +1,36 @@
+DISTRICTS - BALACLAVA SYSTEM
+========================================
+Gerado em: 12/07/2025 00:39:31
+Total de Districts: 1
+Total de membros únicos: 24
+
+DISTRICT #1: Sem District
+  NFTs: 85 | Membros: 24 | %: 100.0%
+
+  MEMBROS:
+    • tz1XjHr1mALiXKLLNokazf4hTJ1tmcaKnonp
+    • tz2M9sX1NesKCZVT8xyBFs7DpX4cxEeyyXdJ
+    • tz1aHnquArW2bUjUa3FrutqL77Uu8YXyStwK
+    • tz2BRY3hwLLKPYhJk9uMvMMJVCh78JHQLtua
+    • tz1Tt1jmXYc7gGmpeBezqAdeojxJyphCYAL7
+    • tz1WdfwRrbQk27qq5fFUEezwyTDs3ZDZX23D
+    • Ernesto Asch (tz1LUv777uAZgT1QpvmEkpxxfKsh9h6ZgRTX)
+    • tz1gWgX53HNPYkqXGKxJ9hxPCreufA3VEJoN
+    • tz1goSVhqyDWgaEZ5AXT2RCNvCabLr3iuay5
+    • tz1cE4gHVCC6QP4eLzaekV2Uu62w1wEzSjoe
+    • tz1geKWj8S8gVaGmCmMh4B4UwYp2n8DHkD2S
+    • tz1VTAY2QHJhnmVken1piuFD2ZVgupxUf88A
+    • Mahesh Balasubramanian (tz1hYQYZrfcnbEQK3LqGxDwcYDc8pyFmuVco)
+    • tz1cjXNpn2G2kTnsSSGy9gRnF6kgyEyjLAsH
+    • tz1WeJigLkEBtbUMd2VSBcxv6JemycPNfyEc
+    • tz1dctvaP42ZZ9iRJFTKU2TNgE4e3HuK8uCM
+    • tz1SJ8kx8CkvuwcFQimBmXvVKb9ySDQwP51Y
+    • tz1NdP31uwX9swpi4YzfU6tqLVugnDrcGgfy
+    • wm.v (tz1PBJpDgtxT95aRr4fGanaipLSzKayHm9Cy)
+    • tz1gfvbrqxbAYngZtSY2dhbvTCcfAm4st1SW
+    • tz1XsFF4fKxn84QSwbWhesk6WeTWsq2cTPYF
+    • tz1UPorMvycMu4U1hDXFn2tCqDqu4KdLkGKv
+    • tz2XcieaUipMHjHZjPSrQQXAQdSNuuFqp4xj
+    • tz1grR1FG7oUFNNgkxj8VdbvawNpv9gVJLVu
+
+----------------------------------------

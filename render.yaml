@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: bl4cl4-bot
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements_render.txt
+    startCommand: python3 main_render.py
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: DISCORD_GM_CHANNEL_ID
+        value: 1333169997228281978 

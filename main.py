@@ -12,6 +12,8 @@ from keep_alive import keep_alive
 import re
 import requests
 from pymongo import MongoClient
+from collections import defaultdict
+from new_contract_utils import gerar_ranking_holders
 
 # Carregar variáveis do .env
 load_dotenv()
@@ -206,25 +208,55 @@ async def on_message(message):
 @commands.has_permissions(administrator=True)
 async def talk(ctx, *, mensagem):
     """Envia uma mensagem do canal de comando para o canal de anúncios."""
-    if ctx.channel.id != DISCORD_NEW_MEMBER_CHANNEL_ID:
+    try:
+        # Verificar se o comando está sendo usado no canal correto
+        if ctx.channel.id != DISCORD_NEW_MEMBER_CHANNEL_ID:
+            await ctx.message.delete()
+            await ctx.send(f"Este comando só pode ser usado em <#{DISCORD_NEW_MEMBER_CHANNEL_ID}>.", delete_after=10)
+            return
+
+        # Deletar a mensagem original
         await ctx.message.delete()
-        await ctx.send(f"Este comando só pode ser usado em <#{DISCORD_NEW_MEMBER_CHANNEL_ID}>.", delete_after=10)
-        return
 
-    await ctx.message.delete()
+        # Obter o canal de anúncios
+        canal_anuncios = bot.get_channel(DISCORD_ANNOUNCEMENT_CHANNEL_ID)
+        if not canal_anuncios:
+            await ctx.send("❌ Canal de anúncios não encontrado. Verifique o ID.", delete_after=10)
+            logging.warning(f"Canal de anúncios ({DISCORD_ANNOUNCEMENT_CHANNEL_ID}) não encontrado ao usar /talk.")
+            return
 
-    canal_anuncios = bot.get_channel(DISCORD_ANNOUNCEMENT_CHANNEL_ID)
-    if canal_anuncios:
-        try:
-            await canal_anuncios.send(mensagem)
-            await ctx.send(f"✅ Mensagem enviada para {canal_anuncios.mention}.", delete_after=10)
-            logging.info(f"Mensagem enviada via /talk por {ctx.author.name}: '{mensagem}'")
-        except Exception as e:
-            await ctx.send(f"❌ Ocorreu um erro ao enviar a mensagem: {e}", delete_after=10)
-            logging.error(f"Erro no comando /talk: {e}")
+        # Verificar permissões do bot no canal de destino
+        if not canal_anuncios.permissions_for(ctx.guild.me).send_messages:
+            await ctx.send("❌ O bot não tem permissão para enviar mensagens no canal de anúncios.", delete_after=10)
+            logging.error(f"Bot sem permissão para enviar mensagens no canal {DISCORD_ANNOUNCEMENT_CHANNEL_ID}")
+            return
+
+        # Enviar a mensagem
+        await canal_anuncios.send(mensagem)
+        await ctx.send(f"✅ Mensagem enviada para {canal_anuncios.mention}.", delete_after=10)
+        logging.info(f"Mensagem enviada via /talk por {ctx.author.name}: '{mensagem}'")
+        
+    except discord.Forbidden:
+        await ctx.send("❌ O bot não tem permissões suficientes para executar este comando.", delete_after=10)
+        logging.error(f"Permissões insuficientes para o comando /talk por {ctx.author.name}")
+    except discord.NotFound:
+        await ctx.send("❌ Canal não encontrado. Verifique se o bot tem acesso ao servidor.", delete_after=10)
+        logging.error(f"Canal não encontrado para o comando /talk")
+    except Exception as e:
+        await ctx.send(f"❌ Ocorreu um erro ao enviar a mensagem: {str(e)}", delete_after=10)
+        logging.error(f"Erro no comando /talk: {e}")
+
+@talk.error
+async def talk_error(ctx, error):
+    """Tratamento de erro específico para o comando talk"""
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("❌ Você não tem permissão para usar este comando. Apenas administradores podem usar `/talk`.", delete_after=10)
+        logging.warning(f"Usuário {ctx.author.name} tentou usar /talk sem permissões")
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("❌ Uso correto: `/talk <mensagem>`. Exemplo: `/talk Olá comunidade!`", delete_after=10)
     else:
-        await ctx.send("❌ Canal de anúncios não encontrado. Verifique o ID.", delete_after=10)
-        logging.warning(f"Canal de anúncios ({DISCORD_ANNOUNCEMENT_CHANNEL_ID}) não encontrado ao usar /talk.")
+        await ctx.send(f"❌ Erro inesperado: {str(error)}", delete_after=10)
+        logging.error(f"Erro inesperado no comando /talk: {error}")
 
 # --- Comandos da Moeda ---
 
@@ -267,63 +299,48 @@ async def posicao(ctx):
     embed.description = rank_text
     await ctx.send(embed=embed)
 
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def rankingholders(ctx, *, data: str):
-    """Analisa um bloco de texto de atividade e cria um ranking de holders."""
-    
-    my_username = "@revolue"
-    await ctx.message.delete()
+@bot.command(name="rankingholders")
+# @commands.has_permissions(administrator=True)  # Comentado temporariamente
+async def rankingholders(ctx):
+    """Mostra o ranking real dos holders do novo contrato on-chain (agrupado por endereço e alias)."""
+    try:
+        await ctx.message.delete()
+        await ctx.send("🔍 Buscando ranking on-chain do novo contrato...", delete_after=5)
+        
+        # Gerar ranking usando a função do novo arquivo
+        ranking, total_holders, total_nfts = gerar_ranking_holders()
 
-    # Keywords para identificar o início de um novo evento na lista
-    event_starters = ['Sale', 'Transfer', 'List', 'Mint', 'Burn', 'Auction', 'Offer', 'Cancelled Offer', 'Accepted Offer']
-    
-    # Padrão de regex para dividir o texto em blocos de transação
-    pattern = r'\b(' + '|'.join(event_starters) + r')\b'
-    blocks = re.split(pattern, data)
-    
-    holders = []
-    
-    # O resultado do split é ['', 'Sale', 'conteúdo do bloco', 'Transfer', 'conteúdo do bloco', ...]
-    # Iteramos pelos blocos, pulando de 2 em 2
-    for i in range(1, len(blocks), 2):
-        event_type = blocks[i]
-        event_content = blocks[i+1]
-        
-        # Processa apenas os eventos de Sale e Transfer, como solicitado
-        if event_type in ['Sale', 'Transfer']:
-            # Encontra todos os @nomesdeusuario no bloco. Permite letras, números, _ e .
-            found_users = re.findall(r'@([\w\.]+)', event_content)
+        if not ranking:
+            await ctx.send("❌ Nenhum holder com balance > 0 encontrado.", delete_after=10)
+            return
+
+        # Criar embed
+        embed = discord.Embed(title="🏆 Ranking On-chain - Novo Contrato", color=0x1a1a1a)
+        description = ""
+        for i, (address, alias, balance, tokens) in enumerate(ranking[:20], 1):
+            name = f"{alias} ({address})" if alias else address
+            description += f"**{i}.** `{name}` - **{balance} NFTs**\n"
             
-            for user in found_users:
-                username = '@' + user
-                # Adiciona o usuário na lista se não for o admin
-                if username.lower() != my_username.lower():
-                    holders.append(username)
-    
-    if not holders:
-        await ctx.send("Nenhum holder qualificado encontrado no texto. Verifique se o texto contém transações de 'Sale' ou 'Transfer' com outros usuários.", delete_after=15)
-        return
+            # Mostrar detalhes dos tokens se houver mais de 1
+            if len(tokens) > 1:
+                for token in tokens:
+                    description += f"   └─ {token['name']} (ID: {token['token_id']})\n"
         
-    from collections import Counter
-    counts = Counter(holders)
-    
-    # Ordena os holders pela quantidade de NFTs, do maior para o menor
-    sorted_holders = counts.most_common()
-    
-    embed = discord.Embed(title="🏆 Ranking de Holders por Atividade", color=0x1a1a1a)
-    
-    description = ""
-    for i, (username, count) in enumerate(sorted_holders):
-        description += f"**{i+1}.** {username} - **{count} NFTs**\n"
-        # Limite de segurança para não ultrapassar o máximo de caracteres do Discord
-        if len(description) > 3800:
-            description += "\n*Ranking truncado para caber na mensagem.*"
-            break
-            
-    embed.description = description
-    
-    await ctx.send(embed=embed)
+        description += f"\n**Total únicos:** {total_holders} | **Total NFTs:** {total_nfts}"
+        embed.description = description
+        
+        await ctx.send(embed=embed)
+        logging.info(f"Ranking on-chain do novo contrato enviado com sucesso por {ctx.author.name}")
+        
+    except requests.RequestException as e:
+        error_msg = f"❌ Erro de conexão com TzKT API: {e}"
+        await ctx.send(error_msg, delete_after=15)
+        logging.error(f"Erro de API no /rankingholders: {e}")
+        
+    except Exception as e:
+        error_msg = f"❌ Erro inesperado: {e}"
+        await ctx.send(error_msg, delete_after=15)
+        logging.error(f"Erro inesperado no /rankingholders: {e}")
 
 @bot.command(name="darvals")
 @commands.has_permissions(administrator=True)
