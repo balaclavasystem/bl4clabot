@@ -227,23 +227,18 @@ async def status(ctx):
     await ctx.send(embed=embed)
 
 def run_bot_with_retry():
-    """Roda o bot com retry em caso de 429 (rate limit) do Discord."""
+    """Roda o bot em background. Se Discord retornar 429, a thread termina mas o site continua no ar."""
     if not DISCORD_TOKEN:
         logging.error("❌ DISCORD_TOKEN não encontrado. Configure no Render: Dashboard → Environment.")
         return
     threading.Thread(target=keep_alive, daemon=True).start()
-    max_retries = 5
-    for attempt in range(max_retries):
-        try:
-            bot.run(DISCORD_TOKEN)
-            break
-        except discord.errors.HTTPException as e:
-            if e.status == 429 and attempt < max_retries - 1:
-                wait = 60 * (attempt + 1)
-                logging.warning(f"⚠️ Discord rate limit (429). Aguardando {wait}s antes de tentar de novo ({attempt + 1}/{max_retries})...")
-                time.sleep(wait)
-            else:
-                raise
+    try:
+        bot.run(DISCORD_TOKEN)
+    except discord.errors.HTTPException as e:
+        if e.status == 429:
+            logging.warning("⚠️ Discord rate limit (429). Bot offline. O site continua no ar. Tente redeploy mais tarde.")
+        else:
+            logging.error(f"❌ Erro Discord: {e}")
 
 
 if __name__ == "__main__":
