@@ -74,8 +74,9 @@ def health():
     return {"status": "online", "bot": "BL4CL4"}
 
 def run_flask():
-    """Executa o Flask em uma thread separada"""
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
+    """Sobe o Flask. Render exige bind em 0.0.0.0 e porta PORT (default 10000)."""
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
 
 def gm_do_dia():
     """Retorna uma mensagem GM aleatória da lista"""
@@ -95,18 +96,18 @@ async def enviar_gm_discord():
         logging.error(f"❌ Erro ao enviar GM: {e}")
 
 def keep_alive():
-    """Função para manter o bot vivo no Render"""
+    """Função para manter o bot vivo no Render. Usa PORT do ambiente (Render usa 10000)."""
+    time.sleep(15)  # Esperar o Flask subir antes do primeiro ping
+    port = int(os.environ.get("PORT", 10000))  # Render default: 10000 (https://render.com/docs/web-services#port-binding)
     while True:
         try:
-            # Ping para o próprio servidor
-            response = requests.get("http://localhost:8080/health", timeout=10)
+            response = requests.get(f"http://localhost:{port}/health", timeout=10)
             if response.status_code == 200:
                 logging.info("✅ Keep-alive ping realizado")
             else:
                 logging.warning(f"⚠️ Keep-alive retornou status {response.status_code}")
         except Exception as e:
             logging.error(f"❌ Erro no keep-alive: {e}")
-        
         time.sleep(300)  # Ping a cada 5 minutos
 
 @bot.event
@@ -225,16 +226,31 @@ async def status(ctx):
     
     await ctx.send(embed=embed)
 
-if __name__ == "__main__":
+def run_bot_with_retry():
+    """Roda o bot com retry em caso de 429 (rate limit) do Discord."""
     if not DISCORD_TOKEN:
-        logging.error("❌ DISCORD_TOKEN não encontrado no arquivo .env")
-        exit(1)
-    
-    logging.info("🚀 Iniciando Bot BL4CL4 - Versão Simplificada")
-    
-    # Iniciar threads em background
-    threading.Thread(target=run_flask, daemon=True).start()
+        logging.error("❌ DISCORD_TOKEN não encontrado. Configure no Render: Dashboard → Environment.")
+        return
     threading.Thread(target=keep_alive, daemon=True).start()
-    
-    # Executar o bot
-    bot.run(DISCORD_TOKEN) 
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            bot.run(DISCORD_TOKEN)
+            break
+        except discord.errors.HTTPException as e:
+            if e.status == 429 and attempt < max_retries - 1:
+                wait = 60 * (attempt + 1)
+                logging.warning(f"⚠️ Discord rate limit (429). Aguardando {wait}s antes de tentar de novo ({attempt + 1}/{max_retries})...")
+                time.sleep(wait)
+            else:
+                raise
+
+
+if __name__ == "__main__":
+    logging.info("🚀 Iniciando Bot BL4CL4 - Versão Simplificada")
+    # Bot em thread em background (se cair com 429, o processo continua)
+    threading.Thread(target=run_bot_with_retry, daemon=True).start()
+    # Flask na thread principal: Render exige que o serviço binde em 0.0.0.0:PORT
+    # (https://render.com/docs/web-services#port-binding). Assim o deploy não falha por "No open ports".
+    time.sleep(2)
+    run_flask() 
